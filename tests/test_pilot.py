@@ -514,7 +514,7 @@ class AuthHTTPTests(unittest.TestCase):
 
 class TransportTests(unittest.TestCase):
     def test_live_permission_before_subprocess_and_dns(self):
-        with patch('pilot.transport.subprocess.run') as run, patch('pilot.transport.socket.getaddrinfo') as dns:
+        with patch('pilot.policy.live_allowed', return_value=False), patch('pilot.transport.subprocess.run') as run, patch('pilot.transport.socket.getaddrinfo') as dns:
             for source in ('brickset-ca', 'brickset-us', 'slickdeals-us', 'http://127.0.0.1'):
                 with self.assertRaisesRegex(FetchError, 'permission-denied'):
                     NetworkFetcher()(source, {})

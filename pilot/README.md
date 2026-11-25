@@ -1,7 +1,7 @@
 # V0.1 local private reader
 
 Local development implementation of the pinned [scope and sequence](../docs/V0.1_SCOPE.md).
-**Development review: HOLD**, with browser and live release requirements outstanding.
+**V0.1 historical review: HOLD.** See the [current V0.1.1 evidence](../docs/V0.1.1_EVIDENCE.md) and [operational handoff](../docs/V0.1.1_OPERATIONS.md) for subsequent results and remaining release requirements.
 Read [actual evidence](../docs/V0.1_EVIDENCE.md) before interpreting test success.
 
 Python **3.11+**, standard library only; one backend and one SQLite database. No
@@ -40,8 +40,8 @@ python3 -m pilot.app serve --port 8766 --origin 'https://PRIVATE-ORIGIN-PROVIDED
 
 That is a placeholder, not a published preview URL. The exact origin controls
 CSRF checks and Secure cookies. Do not change visibility to public or record the
-real URL in public reports. The forwarded browser connection and cookie behavior
-remain untested here; see the browser checklist below. This is not a production
+real URL in public reports. Actual owner Codespaces forwarding remains untested; local TLS Secure-cookie
+behavior is now verified by Chromium, as recorded in current evidence; see the browser checklist below. This is not a production
 deployment. HTTPS termination, hosting, external owner auth integration if chosen,
 device tests and persistent live rights need the separate release gate.
 
@@ -63,21 +63,21 @@ merchants to test them. Rewards, prices, stock, seller, expiry and individual se
 qualification are not inferred. Cards are aggregate articles; optional money,
 merchant/product and promotion fields remain null.
 
-Live recurring retrieval and live persistence are **disabled in policy**. To
-inspect the denied state in a separate NEW local database, use the same real
-owner setup with a new private path:
+V0.1.1 adds opt-in `live` mode for the [bounded private RSS reader policy](../docs/V0.1.1_SOURCE_POLICY.md).
+The current Brickset RSS invitation supports a narrow reader interpretation,
+not a blanket data licence. Use a new private database, not the synthetic store:
 
 ```sh
-python3 -m pilot.app init --data .local/blocked.sqlite3 --mode live-blocked
-python3 -m pilot.app serve --data .local/blocked.sqlite3 --port 8766
+python3 -m pilot.app init --data .local/private-reader.sqlite3 --mode live
+python3 -m pilot.app serve --data .local/private-reader.sqlite3 --port 8766
 ```
 
-That mode denies before DNS, worker creation or an injected fetcher. It cannot
-persist real metadata. There is no live-enable flag, arbitrary URL field or
-Slickdeals adapter. Existing database modes cannot be changed implicitly. Do not
-edit permission constants or erase the old compatibility ledger just to get a
-live check. The legacy request budget remains intact; V0.1 uses an independent
-transactional coordinator and currently has no approved live request budget.
+At least 30 minutes between checks, at most eight attempts/source/rolling day,
+two-hour logical metadata retention, no live backup/history/full text. Failures
+and manual requests count toward the same enforced budget. No owner was set up
+by development; these remain private interactive operator steps. The explicit
+`live-blocked` mode remains available and never sends requests. Existing database
+modes never silently change; no arbitrary URL or Slickdeals adapter exists.
 
 ## Tests
 
@@ -92,7 +92,7 @@ Node is optional and used only for a JavaScript syntax check, not the backend or
 runtime. Tests use disposable SQLite stores, actual local password verification,
 real HTTP requests on ephemeral loopback ports, and synthetic XML. A synthetic
 sleeping child process tests cancellation. No live provider request is made by
-either suite; compatibility's generic live test remains explicitly skipped.
+either automated Python suite; compatibility's generic live test remains explicitly skipped.
 No test password, cookie or profile is an actual owner credential. No test
 session is left running after the suite.
 
@@ -103,11 +103,11 @@ lease fencing, limits, retention and stack comparison; [operations](../docs/V0.1
 for backup/rollback/migration and the proposed private deployment gate.
 
 The manifest and responsive shell are present. No service worker stores private
-data; offline viewing is deferred to V0.2. PWA installation, visual usability and
-physical Chromebook/Android behavior have not been established by HTML or HTTP
-tests. Browser validation is a **release requirement**, not a waived acceptance.
+data; offline viewing is deferred to V0.2. Desktop/mobile-width visual layout is verified in Chromium. PWA installation and
+physical Chromebook/Android behavior remain unverified; headless viewport tests
+do not establish physical-device acceptance. Browser validation is a **release requirement**, not a waived acceptance.
 
-When a browser is available, sign in through the Private preview at approximately
+For the remaining owner session, sign in through the Private preview at approximately
 1280×800 and mobile emulation 390×844. Record browser/version, viewport and actual
 horizontal overflow measurements, label readability, focus/tap targets, source
 links and fixture/aggregate/unknown/fresh/stale/empty/failure labels. Verify profile
@@ -115,3 +115,25 @@ save/rematch, manual preference, foreground behavior, logout clearing and that
 anonymous API access fails. Do not use a checkbox attestation alone. A live-card
 browser/repeat retrieval session needs separately established source rights and
 budget; no new feed requests are necessary to test synthetic layout.
+
+## Browser race regressions
+
+The optional browser suite uses Playwright/Chromium as **test tooling only** and
+a disposable synthetic server. It never initializes a real owner or fetches a
+provider. If browser tooling is not installed, the Python application/tests still
+have no package dependency. In this execution tools and downloaded shared
+libraries were isolated under ignored `.local/browser-tools/` and removed after validation. To rerun, supply Playwright/Chromium and their platform libraries first; the path example below describes that isolated setup, not an application dependency. See the exact
+commands/results in [current evidence](../docs/V0.1.1_EVIDENCE.md).
+
+```sh
+NODE_PATH="$PWD/.local/browser-tools/node_modules" \
+PLAYWRIGHT_BROWSERS_PATH="$PWD/.local/browser-tools/browsers" \
+LD_LIBRARY_PATH="$PWD/.local/browser-tools/sysroot/usr/lib/x86_64-linux-gnu" \
+node --test tests/browser_readiness.cjs
+```
+
+Logout clears the private view immediately, invalidates/aborts stale requests,
+and waits for any pending login cookie before revocation. Failed server logout
+shows a retry action; it is not falsely confirmed. Cache loads render only the
+latest request generation. Browser automation does not replace the
+[single owner device/HTTPS session](../docs/V0.1.1_OPERATIONS.md).

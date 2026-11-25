@@ -16,6 +16,7 @@
   <section id="login-panel" class="panel">
     <h2>Owner sign in</h2><p>This local pilot is private. Use the password set during local setup.</p>
     <form id="login-form"><label>Password<input id="password" name="password" type="password" autocomplete="current-password" required maxlength="1024"></label><button type="submit">Sign in</button></form>
+    <button id="logout-retry" type="button" hidden>Retry server sign-out</button>
   </section>
   <div id="reader" hidden>
     <div class="toolbar"><nav aria-label="Reader sections"><button id="deals-tab" type="button" aria-pressed="true">Articles</button><button id="settings-tab" type="button" aria-pressed="false">Manage</button></nav><button id="logout" class="quiet" type="button">Sign out</button></div>
@@ -37,7 +38,7 @@
         <label>Look back in days<input id="lookback" type="number" min="1" max="90" required></label>
         <p>Articles without a publication date remain visible, labeled unknown.</p>
         <label>Refresh preference<select id="preference"><option value="foreground">When opened or returned to foreground, if eligible</option><option value="manual">Only when I request it</option></select></label>
-        <p>No background polling. Live retrieval and persistent live caching are blocked pending rights review.</p>
+        <p>No background polling. Private RSS mode uses bounded temporary metadata caching; source eligibility and request limits apply to every check.</p>
         <button type="submit">Save profile</button>
       </form>
     </section>

@@ -67,6 +67,7 @@ class Store:
                     source_id TEXT NOT NULL,article_id TEXT NOT NULL,data TEXT NOT NULL,
                     expires REAL NOT NULL,PRIMARY KEY(source_id,article_id));
                 CREATE INDEX IF NOT EXISTS article_expiry ON articles(expires);
+                CREATE TABLE IF NOT EXISTS request_attempts(source_id TEXT NOT NULL,started REAL NOT NULL);
                 CREATE TABLE IF NOT EXISTS runs(
                     run_id TEXT PRIMARY KEY,source_id TEXT NOT NULL,request_key TEXT NOT NULL,
                     trigger TEXT NOT NULL,config_rev INTEGER NOT NULL,started REAL NOT NULL,
@@ -76,12 +77,22 @@ class Store:
             ''')
             row = db.execute("SELECT value FROM meta WHERE key='mode'").fetchone()
             self.mode = row[0] if row else mode or 'synthetic'
-            if self.mode not in ('synthetic', 'live-blocked') or (mode is not None and mode != self.mode):
+            if self.mode not in ('synthetic', 'live', 'live-blocked') or (mode is not None and mode != self.mode):
                 raise ValueError('store-mode-mismatch')
             db.execute("INSERT OR IGNORE INTO meta VALUES('mode',?)", (self.mode,))
             db.execute("INSERT OR IGNORE INTO profile VALUES('owner',?)", (json.dumps(DEFAULT_PROFILE),))
             for source in policy.SOURCES:
                 db.execute('INSERT OR IGNORE INTO source_state(source_id,config_rev) VALUES(?,?)', (source, policy.CONFIG_REVISION))
+            # Fence old workers and discard old validators on a reviewed policy change.
+            db.execute('BEGIN IMMEDIATE')
+            db.execute("UPDATE runs SET outcome='failed',error='config-revised',ended=? WHERE outcome='in-flight' AND config_rev!=?", (self.clock(), policy.CONFIG_REVISION))
+            db.execute("""UPDATE source_state SET config_rev=?,
+                       outcome=CASE WHEN lease IS NOT NULL THEN 'failed' ELSE outcome END,
+                       last_error=CASE WHEN lease IS NOT NULL THEN 'config-revised' ELSE last_error END,
+                       next_eligible=CASE WHEN lease IS NOT NULL THEN MAX(next_eligible,?) ELSE next_eligible END,
+                       lease=NULL,lease_until=0,validators='{}' WHERE config_rev!=?""",
+                       (policy.CONFIG_REVISION, self.clock() + policy.TTL, policy.CONFIG_REVISION))
+            db.commit()
         os.chmod(self.path, 0o600)
         # Recovery changes only this application's expired cache / expired leases.
         with self.tx() as db:
@@ -107,6 +118,7 @@ class Store:
             db.close()
 
     def purge(self, db, now):
+        db.execute('DELETE FROM request_attempts WHERE started<=?', (now - 86400,))
         db.execute('DELETE FROM articles WHERE expires<=?', (now,))
         db.execute('DELETE FROM sessions WHERE expires<=?', (now,))
         db.execute("UPDATE runs SET outcome='failed',error='lease-expired',ended=? WHERE outcome='in-flight' AND started<=?", (now, now - policy.LEASE_SECONDS))
@@ -140,9 +152,9 @@ class Store:
                 expired = state['last_count'] > 0 and count == 0
                 freshness = 'expired' if expired else 'unknown' if state['last_success'] is None else 'fresh' if now - state['last_success'] < policy.TTL else 'stale'
                 result.append({'schemaVersion': 1, 'sourceId': source, **dict(policy.SOURCES[source]),
-                               'mode': self.mode, 'permissionScope': 'synthetic-only; live recurring persistence blocked',
+                               'mode': self.mode, 'permissionScope': 'bounded private RSS reader; no redistribution or archive' if self.mode == 'live' else 'synthetic or explicitly blocked',
                                'enabled': source in profile['sources'] and policy.SOURCES[source]['market'] in profile['markets'],
-                               'livePermitted': False, 'error': state['last_error'],
+                               'livePermitted': self.mode == 'live' and policy.live_allowed(), 'error': state['last_error'],
                                'configRevision': state['config_rev'], 'effectiveTtlSeconds': policy.TTL,
                                'retentionSeconds': policy.RETENTION, 'maxRecords': policy.MAX_RECORDS,
                                'lastAttemptAt': reference.stamp(state['last_attempt']) if state['last_attempt'] is not None else None,
@@ -186,10 +198,16 @@ class Store:
                 return {'outcome': prior['outcome'], 'runId': prior['run_id'], 'reason': 'idempotent-replay'}
             state = db.execute('SELECT * FROM source_state WHERE source_id=?', (source,)).fetchone()
             reason = 'in-flight' if state['lease'] else 'not-eligible' if state['next_eligible'] > now else None
+            if self.mode == 'live' and not reason:
+                attempts = db.execute('SELECT count(*) FROM request_attempts WHERE source_id=?', (source,)).fetchone()[0]
+                if attempts >= policy.LIVE_DAILY_REQUESTS:
+                    reason = 'daily-budget'
             if reason:
                 db.execute('INSERT INTO runs VALUES(?,?,?,?,?,?,?,?,?,?)', (run_id, source, key, trigger, state['config_rev'], now, now, 'skipped', reason, 0))
                 return {'outcome': 'skipped', 'reason': reason, 'runId': run_id}
             db.execute("INSERT INTO runs VALUES(?,?,?,?,?,?,NULL,'in-flight',NULL,0)", (run_id, source, key, trigger, state['config_rev'], now))
+            if self.mode == 'live':
+                db.execute('INSERT INTO request_attempts VALUES(?,?)', (source, now))
             db.execute("UPDATE source_state SET lease=?,lease_until=?,last_attempt=?,outcome='in-flight',last_error=NULL WHERE source_id=?", (token, now + policy.LEASE_SECONDS, now, source))
             return {'token': token, 'runId': run_id, 'state': dict(state)}
 
@@ -205,6 +223,10 @@ class Store:
                 if not state['validators'] or state['validators'] == '{}' or (state['last_count'] and not old):
                     error = 'missing-304-baseline'
             if error:
+                if error == 'source-cache-denied':
+                    db.execute('DELETE FROM articles WHERE source_id=?', (source,))
+                    db.execute("UPDATE source_state SET validators='{}' WHERE source_id=?", (source,))
+                    old = {}
                 failures = state['failures'] + 1
                 eligible = max(now + min(86400, policy.TTL * 2 ** min(failures - 1, 6)), retry_at or now)
                 db.execute("UPDATE source_state SET lease=NULL,lease_until=0,failures=?,outcome='failed',next_eligible=?,last_error=? WHERE source_id=?", (failures, eligible, error, source))
@@ -213,7 +235,9 @@ class Store:
                 if status == 304:
                     outcome, count = 'unchanged', len(old)
                 else:
-                    if self.mode != 'synthetic' or any(not row['provenance']['synthetic'] for row in rows):
+                    synthetic = self.mode == 'synthetic'
+                    if (self.mode == 'live-blocked' or (not synthetic and not policy.live_allowed())
+                            or any(row['provenance']['synthetic'] != synthetic for row in rows)):
                         raise ValueError('persistent-live-denied')
                     if len(rows) > policy.MAX_RECORDS:
                         raise ValueError('snapshot-bound')

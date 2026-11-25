@@ -1,4 +1,4 @@
-"""Denied-by-default live transport with a killable overall request boundary."""
+"""Fixed private-reader live transport with a killable overall request boundary."""
 import base64
 import datetime as dt
 import email.utils
@@ -55,7 +55,7 @@ def _https_get(source_id, conditional):
         raise FetchError('unsafe-destination')
     connection = PinnedHTTPS('brickset.com', addresses[0])
     try:
-        headers = {'User-Agent': 'BricksetPrivatePilot/0.1', 'Accept-Encoding': 'identity',
+        headers = {'User-Agent': 'BricksetPrivateReader/0.1.1', 'Accept-Encoding': 'identity',
                    'Accept': 'application/rss+xml, application/atom+xml, text/xml'}
         for name, value in conditional.items():
             if name not in ('If-None-Match', 'If-Modified-Since') or len(value) > 512 or '\r' in value or '\n' in value:
@@ -64,7 +64,7 @@ def _https_get(source_id, conditional):
         connection.request('GET', source['url'].removeprefix('https://brickset.com'), headers=headers)
         response = connection.getresponse()
         metadata = {key.lower(): value[:512] for key, value in response.getheaders()
-                    if key.lower() in ('etag', 'last-modified', 'retry-after') and '\r' not in value and '\n' not in value}
+                    if key.lower() in ('etag', 'last-modified', 'retry-after', 'cache-control') and '\r' not in value and '\n' not in value}
         if 300 <= response.status < 400 and response.status != 304:
             raise FetchError('redirect-denied')  # Do not follow even same-host redirects.
         if response.status == 304:

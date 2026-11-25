@@ -165,7 +165,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('command', choices=('init', 'serve'))
     parser.add_argument('--data', type=Path, default=Path('.local/pilot.sqlite3'))
-    parser.add_argument('--mode', choices=('synthetic', 'live-blocked'))
+    parser.add_argument('--mode', choices=('synthetic', 'live', 'live-blocked'))
     parser.add_argument('--port', type=int, default=8766)
     parser.add_argument('--origin', help='Exact private HTTPS browser origin, or default loopback origin')
     args = parser.parse_args()

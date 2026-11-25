@@ -12,6 +12,9 @@ def copy_database(source, destination, restore=False):
     source, destination = Path(source), Path(destination)
     if not source.is_file() or destination.exists():
         raise ValueError('source-must-exist-and-destination-must-be-new')
+    with closing(sqlite3.connect(source.resolve().as_uri() + '?mode=ro', uri=True)) as check:
+        if check.execute("SELECT value FROM meta WHERE key='mode'").fetchone()[0] == 'live':
+            raise ValueError('live-reader-backup-denied')
     destination.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
     # Reserve exclusively; never overwrite owner files, including concurrent creation.
     descriptor = os.open(destination, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)

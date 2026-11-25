@@ -37,13 +37,15 @@ class Coordinator:
             validators = json.loads(claim['state']['validators'])
             conditional = {header: validators[field] for header, field in [('If-None-Match', 'etag'), ('If-Modified-Since', 'last-modified')] if field in validators}
             try:
-                # Deny before even an injected fetcher when persistent live policy is unresolved.
-                if self.store.mode != 'synthetic':
+                if self.store.mode != 'synthetic' and (self.store.mode != 'live' or not policy.live_allowed()):
                     raise FetchError('permission-denied')
                 status, body, metadata = self.fetch(source, conditional)
                 if status not in (200, 304):
                     raise FetchError('unexpected-status')
-                rows = None if status == 304 else articles(body, source, reference.stamp(self.store.clock()), synthetic=True)[0]
+                directives = {part.strip().split('=', 1)[0].lower() for part in metadata.get('cache-control', '').split(',')}
+                if self.store.mode == 'live' and directives & {'no-store', 'no-cache'}:
+                    raise FetchError('source-cache-denied')
+                rows = None if status == 304 else articles(body, source, reference.stamp(self.store.clock()), synthetic=self.store.mode == 'synthetic')[0]
                 results[source] = self.store.complete(source, claim, rows, status, metadata)
             except FetchError as exc:
                 results[source] = self.store.complete(source, claim, error=exc.category, retry_at=exc.retry_at)
