@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom"><title>SYNTHETIC restricted-source fixture</title>
+<entry><id>urn:synthetic:offer:1</id><title>Synthetic reward offer</title>
+<link rel="alternate" href="https://example.com/synthetic-offer?affiliate=preserved"/>
+<published>2026-11-25T06:00:00Z</published><summary type="html">SYNTHETIC: $12 plus conditional rewards; currency unspecified.</summary></entry>
+</feed>

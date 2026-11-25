@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0"><channel><title>SYNTHETIC market article fixture</title>
+<item><guid isPermaLink="false">synthetic-article-1</guid><title>Synthetic multi-offer article: $10 and $25; rewards 20%</title>
+<link>https://example.com/article?affiliate=preserved</link><pubDate>Wed, 25 Nov 2026 06:00:00 GMT</pubDate>
+<description><![CDATA[<p>SYNTHETIC: Two offers; price and currency cannot be assigned to this article. Rewards are conditional.</p><a href="https://example.com/offer?tag=synthetic">Source offer link</a><script>alert(1)</script>]]></description></item>
+<item><title>Synthetic unknown price: $-4 / NaN / 20% rewards</title><description>No currency, identifier, link, stock or expiry evidence.</description></item>
+</channel></rss>
