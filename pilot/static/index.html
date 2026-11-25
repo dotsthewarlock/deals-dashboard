@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#174b46">
+  <title>Brickset private reader</title>
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="stylesheet" href="/style.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+<main>
+  <header><p class="eyebrow">PERSONAL ARTICLE READER · V0.1 LOCAL PILOT</p><h1>Brickset reader</h1></header>
+  <p id="message" role="status" aria-live="polite"></p>
+  <section id="login-panel" class="panel">
+    <h2>Owner sign in</h2><p>This local pilot is private. Use the password set during local setup.</p>
+    <form id="login-form"><label>Password<input id="password" name="password" type="password" autocomplete="current-password" required maxlength="1024"></label><button type="submit">Sign in</button></form>
+  </section>
+  <div id="reader" hidden>
+    <div class="toolbar"><nav aria-label="Reader sections"><button id="deals-tab" type="button" aria-pressed="true">Articles</button><button id="settings-tab" type="button" aria-pressed="false">Manage</button></nav><button id="logout" class="quiet" type="button">Sign out</button></div>
+    <p id="mode" class="notice"></p>
+    <section id="deals-panel">
+      <div class="toolbar"><div><p class="eyebrow">BRICKSET · CANADA + UNITED STATES</p><h2 id="profile-heading">Your articles</h2></div><button id="refresh" type="button">Check for updates</button></div>
+      <p>Aggregate articles, not individual verified offers. Price, stock, seller and expiry are unknown. Open the original article for its reported details.</p>
+      <div id="sources" class="sources" aria-label="Source freshness"></div>
+      <div id="articles" class="articles" aria-live="polite"></div>
+    </section>
+    <section id="settings-panel" class="panel" hidden>
+      <h2>Manage your reader</h2><p>These filters match article titles. They do not qualify product prices or discounts. Saving filters rematches cached articles.</p>
+      <form id="profile-form">
+        <label>Profile name<input id="profile-name" maxlength="100" required></label>
+        <fieldset><legend>Markets</legend><label class="check"><input id="market-ca" type="checkbox"> Canada</label><label class="check"><input id="market-us" type="checkbox"> United States</label></fieldset>
+        <fieldset><legend>Sources</legend><label class="check"><input id="source-ca" type="checkbox"> Brickset Amazon Canada articles</label><label class="check"><input id="source-us" type="checkbox"> Brickset Amazon US articles</label></fieldset>
+        <label>Include any keyword (one literal phrase per line)<textarea id="include" rows="3" maxlength="2420"></textarea></label>
+        <label>Exclude any keyword (one literal phrase per line)<textarea id="exclude" rows="3" maxlength="2420"></textarea></label>
+        <label>Look back in days<input id="lookback" type="number" min="1" max="90" required></label>
+        <p>Articles without a publication date remain visible, labeled unknown.</p>
+        <label>Refresh preference<select id="preference"><option value="foreground">When opened or returned to foreground, if eligible</option><option value="manual">Only when I request it</option></select></label>
+        <p>No background polling. Live retrieval and persistent live caching are blocked pending rights review.</p>
+        <button type="submit">Save profile</button>
+      </form>
+    </section>
+  </div>
+  <footer>Local development pilot · No independent price verification · No offline private-data cache</footer>
+</main>
+</body>
+</html>

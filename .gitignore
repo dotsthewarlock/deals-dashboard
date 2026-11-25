@@ -1,0 +1,4 @@
+# V0.1 local owner data, sessions and SQLite sidecars. Never publish runtime data.
+/.local/
+__pycache__/
+*.py[cod]
